@@ -38,7 +38,6 @@ function loadFile(fileName) {
             var lastPosition = mower.getPosition();
             var result = lastPosition.getX().toString() + ' ' + lastPosition.getY().toString() + ' ' + lastPosition.getDirection() + '\n';
             fs.appendFile('resources/outputData.txt', result, function (err) { });
-            console.log(result);
         };
         var fileCoordinates, x, y, direction, defaultPosition, instructions;
         for (var i = 1; i < fileLines.length; i = i + 2) {

@@ -1,6 +1,6 @@
 import { Position } from "../../model/app/impl/position";
-import { MoveStrategy } from "../core/moveStrategy";
 import { Direction } from "../../model/enum/direction";
+import { MoveStrategy } from "../core/moveStrategy";
 
 export class ForwardMoveStrategy implements MoveStrategy {
   /**
@@ -10,7 +10,7 @@ export class ForwardMoveStrategy implements MoveStrategy {
    * @returns {Position}
    * @memberof ForwardMoveStrategy
    */
-  move(position: Position): Position {
+  public move(position: Position): Position {
     let newPosition: Position;
     const direction = position.getDirection();
     switch(direction) {
@@ -28,7 +28,6 @@ export class ForwardMoveStrategy implements MoveStrategy {
         break;
       default :
         throw new Error('Something bad happened with direction : ' + position.getDirection());
-        break;
     }
     return newPosition;
   }

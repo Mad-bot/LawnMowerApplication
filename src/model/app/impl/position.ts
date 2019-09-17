@@ -2,9 +2,9 @@ import { Direction } from "../../enum/direction";
 
 export class Position {
   // Field
-  x: number;
-  y: number;
-  direction: Direction;
+  private x: number;
+  private y: number;
+  private direction: Direction;
 
   // Constructor
   constructor(x: number, y: number, direction: Direction ) {
@@ -14,16 +14,16 @@ export class Position {
   }
 
   // Getter : returns the x position
-  getX(): number {
+  public getX(): number {
     return this.x;
   }
 
   // Getter : returns the y position
-  getY(): number {
+  public getY(): number {
     return this.y;
   }
 
-  getDirection(): Direction {
+  public getDirection(): Direction {
     return this.direction;
   }
 

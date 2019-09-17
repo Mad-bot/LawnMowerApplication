@@ -1,21 +1,21 @@
-import { Position } from "../../model/app/impl/position";
-import { MoveEngine } from "../core/moveEngine";
-import { Movable } from "../../model/app/core/movable";
 import { Area } from "../../model/app/core/area";
+import { Movable } from "../../model/app/core/movable";
+import { Position } from "../../model/app/impl/position";
+import { Move } from "../../model/enum/move";
+import { MoveEngine } from "../core/moveEngine";
 import { MoveStrategy } from "../core/moveStrategy";
+import { ForwardMoveStrategy } from "./forwardMoveStrategy";
 import { RotateLeftMoveStrategy } from "./rotateLeftMoveStrategy";
 import { RotateRightMoveStrategy } from "./rotateRightMoveStrategy";
-import { ForwardMoveStrategy } from "./forwardMoveStrategy";
-import { Move } from "../../model/enum/move";
 
 /**
  * Implementation of the move engine
  */
 export class MoveEngineImpl implements MoveEngine {
-  movables: Movable[] = [];
-  area: Area | undefined;
+  private movables: Movable[] = [];
+  private area: Area | undefined;
 
-  addMovable(movable: Movable, position: Position): number {
+  public addMovable(movable: Movable, position: Position): number {
     if(!this.area) {
       throw new Error('Something bad happened : area does not exist');
     } else if (!this.area.isInside(position)) {
@@ -29,7 +29,7 @@ export class MoveEngineImpl implements MoveEngine {
     }
   }
 
-  move(id: number, move: Move): Position {
+  public move(id: number, move: Move): Position {
     // Get the strategy move from move
     let strategy: MoveStrategy;
     switch (move) {
@@ -67,15 +67,15 @@ export class MoveEngineImpl implements MoveEngine {
     }
   }
 
-  getMovableFromId(id: number): Movable {
+  public getMovableFromId(id: number): Movable {
     return this.movables[id];
   }
 
-  getMovables(): Movable[] {
+  public getMovables(): Movable[] {
     return this.movables;
   }
 
-  setArea(area: Area): void {
+  public setArea(area: Area): void {
     this.area = area;
   }
 }

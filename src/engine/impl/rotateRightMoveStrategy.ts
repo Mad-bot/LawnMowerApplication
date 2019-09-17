@@ -1,6 +1,6 @@
-import { MoveStrategy } from "../core/moveStrategy";
 import { Position } from "../../model/app/impl/position";
 import { Direction } from "../../model/enum/direction";
+import { MoveStrategy } from "../core/moveStrategy";
 
 /**
  * Right move strategy of rotation
@@ -13,7 +13,7 @@ export class RotateRightMoveStrategy implements MoveStrategy {
    * Impl : Compute a new position
    * @param position
    */
-  move(position: Position): Position {
+  public move(position: Position): Position {
     const direction = position.getDirection();
     let newDirection: Direction;
     switch(direction) {
@@ -31,7 +31,6 @@ export class RotateRightMoveStrategy implements MoveStrategy {
         break;
       default :
         throw new Error('Something bad happened with direction : ' + direction);
-        break;
     }
     // Returns position with the new direction
     return new Position(position.getX(), position.getY(), newDirection);

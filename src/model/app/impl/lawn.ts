@@ -6,21 +6,21 @@ import { Position } from "./position";
  */
 export class Lawn implements Area {
   // Field
-  xSize: number;
-  ySize: number;
+  private xSize: number;
+  private ySize: number;
   // Constructor
   constructor(x: number, y: number ) {
     this.xSize = x;
     this.ySize = y;
   }
   // Getters
-  getXSize(): number {
+  public getXSize(): number {
     return this.xSize;
   }
-  getYSize(): number {
+  public getYSize(): number {
     return this.ySize;
   }
-  isInside(position: Position): boolean {
+  public isInside(position: Position): boolean {
     const x: number = position.getX();
     const y: number = position.getY();
 
