@@ -90,6 +90,53 @@ def get_task(task_id: str):
     return task
 
 
+@app.get("/tasks/{task_id}/messages")
+def get_messages(task_id: str):
+    if not store.get_task(task_id):
+        raise HTTPException(status_code=404, detail="Task not found")
+    return store.get_messages(task_id)
+
+
+class ContinueRequest(BaseModel):
+    prompt: str
+
+
+def _continue_agent_async(task_id: str, prompt: str):
+    import agent
+    store.update_task(task_id, status="running")
+    try:
+        result = agent.continue_agent(task_id, prompt)
+        pr_number = result.get("pr_number")
+        pr_url = result.get("pr_url")
+        updates = {"status": "pr_open" if pr_number else "done"}
+        if pr_number:
+            updates["pr_number"] = pr_number
+        if pr_url:
+            updates["pr_url"] = pr_url
+        if pr_number and not store.get_task(task_id).get("pr_status"):
+            updates["pr_status"] = "open"
+        store.update_task(task_id, **updates)
+    except Exception as e:
+        store.update_task(task_id, status="error", error=str(e))
+
+
+@app.post("/tasks/{task_id}/continue")
+def continue_task(task_id: str, req: ContinueRequest):
+    task = store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] in ("running", "queued"):
+        raise HTTPException(status_code=400, detail="Task is already running")
+    if not task.get("branch"):
+        raise HTTPException(status_code=400, detail="Task has no branch to continue on")
+    threading.Thread(
+        target=_continue_agent_async,
+        args=(task_id, req.prompt),
+        daemon=True,
+    ).start()
+    return store.get_task(task_id)
+
+
 @app.post("/tasks/{task_id}/close")
 def close_task(task_id: str):
     task = store.get_task(task_id)

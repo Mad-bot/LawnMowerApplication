@@ -32,6 +32,7 @@ def create_task(task_id: str, description: str) -> dict:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "error": None,
+        "messages": [],
     }
     with _lock:
         data = _load()
@@ -58,6 +59,19 @@ def get_task(task_id: str) -> Optional[dict]:
 def list_tasks() -> list[dict]:
     with _lock:
         return list(_load().values())
+
+
+def append_messages(task_id: str, messages: list) -> None:
+    with _lock:
+        data = _load()
+        data[task_id].setdefault("messages", []).extend(messages)
+        data[task_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+        _save(data)
+
+
+def get_messages(task_id: str) -> list:
+    with _lock:
+        return _load().get(task_id, {}).get("messages", [])
 
 
 def reset() -> None:

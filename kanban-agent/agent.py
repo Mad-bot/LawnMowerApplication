@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 from github import Github
 from langchain_core.tools import tool
 
+import store
+
 load_dotenv()
 
 REPO_PATH = Path(os.environ["REPO_LOCAL_PATH"])
@@ -162,16 +164,46 @@ After completing, output a single JSON line: {"pr_number": <number>}"""
 
 
 def run_agent(task_id: str, description: str) -> dict:
-    """Run the full agent flow. Returns {"branch": str, "pr_number": int | None}."""
+    """Run the full agent flow. Returns {"branch": str, "pr_number": int, "pr_url": str}."""
     branch_name = f"task/{task_id}-{_slug(description)}"
     worktree_path = _make_worktree(branch_name)
+    initial_messages = [
+        {"role": "user", "content": [{"text": f"Task ID: {task_id}\n\nTask description:\n{description}"}]}
+    ]
     try:
-        return _run_loop(task_id, description, branch_name, worktree_path)
+        return _run_loop(task_id, description, branch_name, worktree_path, initial_messages)
     finally:
         _remove_worktree(worktree_path)
 
 
-def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: Path) -> dict:
+def continue_agent(task_id: str, follow_up: str) -> dict:
+    """Continue work on an existing task branch with a follow-up prompt."""
+    task = store.get_task(task_id)
+    branch_name = task["branch"]
+    description = task["description"]
+
+    # Create a fresh worktree from the existing branch tip
+    worktree_path = Path(tempfile.mkdtemp(prefix=f"multitask-{branch_name.replace('/', '-')}-"))
+    _git(["fetch", "origin"])
+    _git(["worktree", "add", str(worktree_path), branch_name])
+    try:
+        # Resume from stored history + new user message
+        prior = store.get_messages(task_id)
+        messages = prior + [{"role": "user", "content": [{"text": follow_up}]}]
+        result = _run_loop(task_id, description, branch_name, worktree_path, messages, open_pr=False)
+        return result
+    finally:
+        _remove_worktree(worktree_path)
+
+
+def _run_loop(
+    task_id: str,
+    description: str,
+    branch_name: str,
+    worktree_path: Path,
+    initial_messages: list,
+    open_pr: bool = True,
+) -> dict:
     model_id = (
         os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
         or os.environ.get("ANTHROPIC_MODEL")
@@ -184,10 +216,8 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
     tools_by_name = {t.name: t for t in tools}
     tool_config = {"tools": [_bedrock_tool_spec(t) for t in tools]}
 
-    messages = [
-        {"role": "user", "content": [{"text": f"Task ID: {task_id}\n\nTask description:\n{description}"}]}
-    ]
-
+    messages = list(initial_messages)
+    new_messages: list = []  # only messages added in this run
     pr_number: int | None = None
     pr_url: str | None = None
 
@@ -200,6 +230,7 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
         )
         output_msg = response["output"]["message"]
         messages.append(output_msg)
+        new_messages.append(output_msg)
 
         if response["stopReason"] != "tool_use":
             break
@@ -229,10 +260,14 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
                         "status": "error",
                     }
                 })
-        messages.append({"role": "user", "content": tool_results})
+        tool_msg = {"role": "user", "content": tool_results}
+        messages.append(tool_msg)
+        new_messages.append(tool_msg)
 
-    # Guarantee PR is opened even if the LLM skipped that step
-    if pr_number is None:
+    # Persist the new messages (initial user message + all new turns)
+    store.append_messages(task_id, list(initial_messages) + new_messages)
+
+    if open_pr and pr_number is None:
         pr_number, pr_url = _open_or_get_pr(branch_name, description, task_id)
 
     return {"branch": branch_name, "pr_number": pr_number, "pr_url": pr_url}
