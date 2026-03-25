@@ -110,6 +110,7 @@ def run_agent(task_id: str, description: str) -> dict:
     )
     llm = ChatBedrockConverse(
         model=model_id,
+        provider="anthropic",
         region_name=os.environ.get("AWS_REGION", "eu-west-1"),
         temperature=0,
     ).bind_tools(TOOLS)
