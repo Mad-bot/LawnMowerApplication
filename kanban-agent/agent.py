@@ -30,18 +30,10 @@ _repo = None
 def _github_token() -> str:
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or token.startswith("your_"):
-        for gh_bin in ["gh", "/opt/homebrew/bin/gh", "/usr/local/bin/gh"]:
-            try:
-                result = subprocess.run(
-                    [gh_bin, "auth", "token"], capture_output=True, text=True
-                )
-                if result.returncode == 0 and result.stdout.strip():
-                    token = result.stdout.strip()
-                    break
-            except FileNotFoundError:
-                continue
-    if not token or token.startswith("your_"):
-        raise RuntimeError("No GitHub token found. Set GITHUB_TOKEN in .env or run `gh auth login`.")
+        raise RuntimeError(
+            "No GitHub token found. Use ./start.sh to launch the server "
+            "(it refreshes the token automatically), or set GITHUB_TOKEN in .env."
+        )
     return token
 
 
