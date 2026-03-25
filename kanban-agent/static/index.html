@@ -192,6 +192,21 @@
 
     button.retry:hover { background: #f8514920; }
 
+    button.close-task {
+      margin-top: 6px;
+      background: transparent;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      width: 100%;
+    }
+
+    button.close-task:hover { border-color: #6e7681; color: #e6edf3; }
+
     .spinner {
       display: inline-block;
       width: 10px; height: 10px;
@@ -250,6 +265,7 @@
   ];
 
   function taskColumn(task) {
+    if (task.status === "closed") return "closed";
     if (task.status === "error") return "error";
     if (task.status === "queued") return "queued";
     if (task.status === "running") return "running";
@@ -270,6 +286,10 @@
     if (task.error) {
       meta += `<div class="error">${task.error}</div>`;
       meta += `<button class="retry" onclick="retryTask('${task.id}')">↺ Retry</button>`;
+    }
+    const closeable = !["running", "queued", "closed"].includes(task.status);
+    if (closeable) {
+      meta += `<button class="close-task" onclick="closeTask('${task.id}')">✕ Close</button>`;
     }
     return `
       <div class="card">
@@ -338,6 +358,12 @@
     const res = await fetch('/tasks', { method: 'DELETE' });
     if (res.ok) { showToast('Database reset'); fetchTasks(); }
     else showToast('Reset failed', true);
+  }
+
+  async function closeTask(taskId) {
+    const res = await fetch(`/tasks/${taskId}/close`, { method: 'POST' });
+    if (res.ok) { fetchTasks(); }
+    else showToast('Could not close task', true);
   }
 
   async function retryTask(taskId) {

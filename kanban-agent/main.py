@@ -90,6 +90,17 @@ def get_task(task_id: str):
     return task
 
 
+@app.post("/tasks/{task_id}/close")
+def close_task(task_id: str):
+    task = store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] in ("running", "queued"):
+        raise HTTPException(status_code=400, detail="Cannot close a running or queued task")
+    store.update_task(task_id, status="closed", pr_status="closed")
+    return store.get_task(task_id)
+
+
 @app.post("/tasks/{task_id}/retry")
 def retry_task(task_id: str):
     task = store.get_task(task_id)
