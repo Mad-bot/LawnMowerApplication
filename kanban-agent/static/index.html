@@ -163,6 +163,21 @@
       word-break: break-word;
     }
 
+    button.retry {
+      margin-top: 6px;
+      background: transparent;
+      border: 1px solid #f85149;
+      border-radius: 6px;
+      color: #f85149;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      width: 100%;
+    }
+
+    button.retry:hover { background: #f8514920; }
+
     .spinner {
       display: inline-block;
       width: 10px; height: 10px;
@@ -239,6 +254,7 @@
     }
     if (task.error) {
       meta += `<div class="error">${task.error}</div>`;
+      meta += `<button class="retry" onclick="retryTask('${task.id}')">↺ Retry</button>`;
     }
     return `
       <div class="card">
@@ -299,6 +315,16 @@
       fetchTasks();
     } else {
       showToast('Error creating task', true);
+    }
+  }
+
+  async function retryTask(taskId) {
+    const res = await fetch(`/tasks/${taskId}/retry`, { method: 'POST' });
+    if (res.ok) {
+      showToast('Task retrying…');
+      fetchTasks();
+    } else {
+      showToast('Retry failed', true);
     }
   }
 

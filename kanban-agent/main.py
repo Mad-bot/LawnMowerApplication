@@ -90,6 +90,22 @@ def get_task(task_id: str):
     return task
 
 
+@app.post("/tasks/{task_id}/retry")
+def retry_task(task_id: str):
+    task = store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] != "error":
+        raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
+    store.update_task(task_id, status="queued", error=None, branch=None, pr_number=None, pr_url=None, pr_status=None)
+    threading.Thread(
+        target=_run_agent_async,
+        args=(task_id, task["description"]),
+        daemon=True,
+    ).start()
+    return store.get_task(task_id)
+
+
 # Serve the dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
