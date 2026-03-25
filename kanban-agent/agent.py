@@ -13,10 +13,9 @@ import re
 import subprocess
 from pathlib import Path
 
+import boto3
 from dotenv import load_dotenv
 from github import Github
-from langchain_aws import ChatBedrockConverse
-from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 
 load_dotenv()
@@ -100,44 +99,74 @@ When given a task:
 After all tool calls are complete, output a JSON object on its own line like:
 {"branch": "<branch_name>", "pr_number": <number>}"""
 
+# Convert langchain @tool definitions to Bedrock converse tool spec format
+def _bedrock_tool_spec(lc_tool) -> dict:
+    schema = lc_tool.args_schema.model_json_schema()
+    return {
+        "toolSpec": {
+            "name": lc_tool.name,
+            "description": lc_tool.description,
+            "inputSchema": {"json": schema},
+        }
+    }
+
 
 def run_agent(task_id: str, description: str) -> dict:
-    """Run the full agent flow for a task. Returns the final output string."""
+    """Run the full agent flow using boto3 bedrock-runtime converse API."""
     model_id = (
         os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
         or os.environ.get("ANTHROPIC_MODEL")
         or "arn:aws:bedrock:eu-west-1:927750239225:application-inference-profile/o4qdiid0wrx1"
     )
-    llm = ChatBedrockConverse(
-        model=model_id,
-        provider="anthropic",
-        region_name=os.environ.get("AWS_REGION", "eu-west-1"),
-        temperature=0,
-    ).bind_tools(TOOLS)
+    region = os.environ.get("AWS_REGION", "eu-west-1")
+    client = boto3.client("bedrock-runtime", region_name=region)
+    tool_config = {"tools": [_bedrock_tool_spec(t) for t in TOOLS]}
 
     messages = [
-        HumanMessage(
-            content=f"System: {SYSTEM_PROMPT}\n\nTask ID: {task_id}\n\nTask description:\n{description}"
-        )
+        {"role": "user", "content": [{"text": f"Task ID: {task_id}\n\nTask description:\n{description}"}]}
     ]
 
     for _ in range(10):  # max iterations
-        response = llm.invoke(messages)
-        messages.append(response)
+        response = client.converse(
+            modelId=model_id,
+            system=[{"text": SYSTEM_PROMPT}],
+            messages=messages,
+            toolConfig=tool_config,
+        )
 
-        if not response.tool_calls:
-            # Final text response
-            return {"output": response.content}
+        output_msg = response["output"]["message"]
+        messages.append(output_msg)
+        stop_reason = response["stopReason"]
 
-        # Execute each tool call and collect results
-        for tc in response.tool_calls:
-            tool_fn = TOOLS_BY_NAME[tc["name"]]
+        if stop_reason != "tool_use":
+            # Extract final text
+            text = " ".join(b["text"] for b in output_msg["content"] if "text" in b)
+            return {"output": text}
+
+        # Execute each tool use block
+        tool_results = []
+        for block in output_msg["content"]:
+            if "toolUse" not in block:
+                continue
+            tool_use = block["toolUse"]
+            tool_fn = TOOLS_BY_NAME[tool_use["name"]]
             try:
-                result = tool_fn.invoke(tc["args"])
+                result = tool_fn.invoke(tool_use["input"])
+                tool_results.append({
+                    "toolResult": {
+                        "toolUseId": tool_use["toolUseId"],
+                        "content": [{"text": str(result)}],
+                    }
+                })
             except Exception as e:
-                result = f"ERROR: {e}"
-            messages.append(
-                ToolMessage(content=str(result), tool_call_id=tc["id"])
-            )
+                tool_results.append({
+                    "toolResult": {
+                        "toolUseId": tool_use["toolUseId"],
+                        "content": [{"text": f"ERROR: {e}"}],
+                        "status": "error",
+                    }
+                })
+
+        messages.append({"role": "user", "content": tool_results})
 
     return {"output": "Agent reached max iterations without completing."}
