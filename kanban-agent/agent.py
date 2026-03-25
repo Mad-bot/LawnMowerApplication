@@ -30,14 +30,16 @@ _repo = None
 def _github_token() -> str:
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or token.startswith("your_"):
-        # Try gh CLI — search common install locations
-        for gh_bin in ["gh", "/usr/local/bin/gh", "/opt/homebrew/bin/gh"]:
-            result = subprocess.run(
-                [gh_bin, "auth", "token"], capture_output=True, text=True
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                token = result.stdout.strip()
-                break
+        for gh_bin in ["gh", "/opt/homebrew/bin/gh", "/usr/local/bin/gh"]:
+            try:
+                result = subprocess.run(
+                    [gh_bin, "auth", "token"], capture_output=True, text=True
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    token = result.stdout.strip()
+                    break
+            except FileNotFoundError:
+                continue
     if not token or token.startswith("your_"):
         raise RuntimeError("No GitHub token found. Set GITHUB_TOKEN in .env or run `gh auth login`.")
     return token
