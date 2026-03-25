@@ -1,4 +1,4 @@
-# Vibe Kanban — AI Agent Dashboard
+# MultiTask — AI Agent Dashboard
 
 A LangChain-powered task runner + kanban dashboard for the LawnMowerApplication repo.
 

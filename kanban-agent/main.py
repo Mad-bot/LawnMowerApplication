@@ -1,4 +1,4 @@
-"""FastAPI backend for the Vibe Kanban agent."""
+"""FastAPI backend for the MultiTask agent."""
 
 import threading
 import uuid
@@ -16,7 +16,7 @@ from github_poller import start_poller
 
 load_dotenv()
 
-app = FastAPI(title="Vibe Kanban")
+app = FastAPI(title="MultiTask")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
