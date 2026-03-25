@@ -107,13 +107,16 @@ def _make_tools(worktree_path: Path, branch_name: str):
     @tool
     def open_pull_request(title: str, body: str) -> str:
         """Open a GitHub pull request for the current branch into master. Returns PR number."""
-        pr = _get_repo().create_pull(
-            title=title,
-            body=body,
-            head=branch_name,
-            base="master",
-        )
-        return str(pr.number)
+        from github import GithubException
+        try:
+            pr = _get_repo().create_pull(title=title, body=body, head=branch_name, base="master")
+            return str(pr.number)
+        except GithubException as e:
+            if e.status == 422 and "already exists" in str(e.data):
+                pulls = list(_get_repo().get_pulls(state="open", head=f"Mad-bot:{branch_name}"))
+                if pulls:
+                    return str(pulls[0].number)
+            raise
 
     return [commit_and_push, open_pull_request]
 
@@ -129,6 +132,26 @@ def _bedrock_tool_spec(lc_tool) -> dict:
             "inputSchema": {"json": schema},
         }
     }
+
+
+def _open_or_get_pr(branch_name: str, description: str, task_id: str) -> int:
+    """Create a PR, or return the existing one's number if it already exists."""
+    from github import GithubException
+    try:
+        pr = _get_repo().create_pull(
+            title=f"[Agent] {description[:72]}",
+            body=f"Automated PR for task `{task_id}`.\n\n**Description:** {description}",
+            head=branch_name,
+            base="master",
+        )
+        return pr.number
+    except GithubException as e:
+        if e.status == 422 and "already exists" in str(e.data):
+            # PR already open for this branch — fetch it
+            pulls = list(_get_repo().get_pulls(state="open", head=f"Mad-bot:{branch_name}"))
+            if pulls:
+                return pulls[0].number
+        raise
 
 
 SYSTEM_PROMPT = """You are a software engineering agent working on the LawnMowerApplication TypeScript project.
@@ -217,11 +240,6 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
 
     # Guarantee PR is opened even if the LLM skipped that step
     if pr_number is None:
-        pr_number = int(_get_repo().create_pull(
-            title=f"[Agent] {description[:72]}",
-            body=f"Automated PR for task `{task_id}`.\n\n**Description:** {description}",
-            head=branch_name,
-            base="master",
-        ).number)
+        pr_number = _open_or_get_pr(branch_name, description, task_id)
 
     return {"branch": branch_name, "pr_number": pr_number}
