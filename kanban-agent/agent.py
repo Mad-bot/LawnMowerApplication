@@ -63,11 +63,12 @@ def _slug(text: str) -> str:
 
 def _make_worktree(branch_name: str) -> Path:
     """Create an isolated git worktree for the branch in a temp directory."""
-    worktree_path = Path(tempfile.mkdtemp(prefix=f"vk-{branch_name.replace('/', '-')}-"))
     _git(["fetch", "origin"])
+    # Delete local branch if it already exists (e.g. from a previous failed attempt)
+    _git(["branch", "-D", branch_name], cwd=REPO_PATH) if branch_name in _git(["branch"]) else None
+    worktree_path = Path(tempfile.mkdtemp(prefix=f"vk-{branch_name.replace('/', '-')}-"))
     _git(["worktree", "add", "--no-checkout", str(worktree_path), "origin/master"])
     _git(["checkout", "-b", branch_name], cwd=worktree_path)
-    # Checkout the files
     _git(["checkout", "HEAD", "--", "."], cwd=worktree_path)
     return worktree_path
 
