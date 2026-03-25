@@ -103,7 +103,11 @@ After all tool calls are complete, output a JSON object on its own line like:
 
 def run_agent(task_id: str, description: str) -> dict:
     """Run the full agent flow for a task. Returns the final output string."""
-    model_id = os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL", os.environ.get("ANTHROPIC_MODEL"))
+    model_id = (
+        os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+        or os.environ.get("ANTHROPIC_MODEL")
+        or "arn:aws:bedrock:eu-west-1:927750239225:application-inference-profile/o4qdiid0wrx1"
+    )
     llm = ChatBedrockConverse(
         model=model_id,
         region_name=os.environ.get("AWS_REGION", "eu-west-1"),
