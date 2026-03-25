@@ -7,19 +7,14 @@ import time
 from dotenv import load_dotenv
 from github import Github
 
+import agent
 import store
 
 load_dotenv()
 
-_repo = None
-
 
 def _get_repo():
-    global _repo
-    if _repo is None:
-        gh = Github(os.environ["GITHUB_TOKEN"])
-        _repo = gh.get_repo(os.environ["GITHUB_REPO"])
-    return _repo
+    return Github(agent._github_token()).get_repo(os.environ["GITHUB_REPO"])
 
 # PR states we consider "terminal" (stop polling)
 TERMINAL = {"merged", "closed"}
@@ -63,7 +58,9 @@ def _poll_once():
             updates = _pr_status(task["pr_number"])
             store.update_task(task["id"], **updates)
         except Exception as e:
+            import traceback
             print(f"[poller] error polling PR {task['pr_number']}: {e}")
+            traceback.print_exc()
 
 
 def start_poller(interval_seconds: int = 30):
