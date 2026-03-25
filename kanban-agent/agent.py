@@ -27,11 +27,21 @@ GITHUB_REPO = os.environ["GITHUB_REPO"]
 _repo = None
 
 
+def _github_token() -> str:
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if not token or token == "your_github_token_here":
+        token = subprocess.run(
+            ["gh", "auth", "token"], capture_output=True, text=True
+        ).stdout.strip()
+    if not token:
+        raise RuntimeError("No GitHub token found. Set GITHUB_TOKEN or run `gh auth login`.")
+    return token
+
+
 def _get_repo():
     global _repo
     if _repo is None:
-        gh = Github(os.environ["GITHUB_TOKEN"])
-        _repo = gh.get_repo(GITHUB_REPO)
+        _repo = Github(_github_token()).get_repo(GITHUB_REPO)
     return _repo
 
 
