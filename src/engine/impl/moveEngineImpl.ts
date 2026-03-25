@@ -5,6 +5,10 @@ import { Move } from "../../model/enum/move";
 import { MoveEngine } from "../core/moveEngine";
 import { MoveStrategy } from "../core/moveStrategy";
 import { ForwardMoveStrategy } from "./forwardMoveStrategy";
+import { ForwardNorthEastMoveStrategy } from "./forwardNorthEastMoveStrategy";
+import { ForwardNorthWestMoveStrategy } from "./forwardNorthWestMoveStrategy";
+import { ForwardSouthEastMoveStrategy } from "./forwardSouthEastMoveStrategy";
+import { ForwardSouthWestMoveStrategy } from "./forwardSouthWestMoveStrategy";
 import { RotateLeftMoveStrategy } from "./rotateLeftMoveStrategy";
 import { RotateRightMoveStrategy } from "./rotateRightMoveStrategy";
 
@@ -41,6 +45,18 @@ export class MoveEngineImpl implements MoveEngine {
         break;
       case Move.FORWARD :
         strategy = new ForwardMoveStrategy();
+        break;
+      case Move.FORWARD_NW :
+        strategy = new ForwardNorthWestMoveStrategy();
+        break;
+      case Move.FORWARD_SW :
+        strategy = new ForwardSouthWestMoveStrategy();
+        break;
+      case Move.FORWARD_NE :
+        strategy = new ForwardNorthEastMoveStrategy();
+        break;
+      case Move.FORWARD_SE :
+        strategy = new ForwardSouthEastMoveStrategy();
         break;
       default:
         throw new Error('Something bad happened : move ' + move + ' is not supported');
