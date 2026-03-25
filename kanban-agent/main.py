@@ -76,6 +76,12 @@ def list_tasks():
     return tasks
 
 
+@app.delete("/tasks")
+def reset_tasks():
+    store.reset()
+    return {"ok": True}
+
+
 @app.get("/tasks/{task_id}")
 def get_task(task_id: str):
     task = store.get_task(task_id)

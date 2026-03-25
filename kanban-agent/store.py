@@ -58,3 +58,8 @@ def get_task(task_id: str) -> Optional[dict]:
 def list_tasks() -> list[dict]:
     with _lock:
         return list(_load().values())
+
+
+def reset() -> None:
+    with _lock:
+        _save({})
