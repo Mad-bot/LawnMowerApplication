@@ -1,6 +1,5 @@
 """FastAPI backend for the Vibe Kanban agent."""
 
-import re
 import threading
 import uuid
 from typing import Optional
@@ -38,20 +37,15 @@ def _run_agent_async(task_id: str, description: str):
     store.update_task(task_id, status="running")
     try:
         result = agent.run_agent(task_id, description)
-        output = result.get("output", "")
-
-        # Parse branch and PR number from agent output
-        branch_match = re.search(r"task/[\w\-]+", output)
-        pr_match = re.search(r'"pr_number":\s*(\d+)', output)
-
-        branch = branch_match.group(0) if branch_match else None
-        pr_number = int(pr_match.group(1)) if pr_match else None
-
+        branch = result.get("branch")
+        pr_number = result.get("pr_number")
+        pr_url = result.get("pr_url")
         store.update_task(
             task_id,
             status="pr_open" if pr_number else "done",
             branch=branch,
             pr_number=pr_number,
+            pr_url=pr_url,
             pr_status="open" if pr_number else None,
         )
     except Exception as e:

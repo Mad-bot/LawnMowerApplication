@@ -98,16 +98,16 @@ def _make_tools(worktree_path: Path, branch_name: str):
 
     @tool
     def open_pull_request(title: str, body: str) -> str:
-        """Open a GitHub pull request for the current branch into master. Returns PR number."""
+        """Open a GitHub pull request for the current branch into master. Returns 'pr_number|pr_url'."""
         from github import GithubException
         try:
             pr = _get_repo().create_pull(title=title, body=body, head=branch_name, base="master")
-            return str(pr.number)
+            return f"{pr.number}|{pr.html_url}"
         except GithubException as e:
             if e.status == 422 and "already exists" in str(e.data):
                 pulls = list(_get_repo().get_pulls(state="open", head=f"Mad-bot:{branch_name}"))
                 if pulls:
-                    return str(pulls[0].number)
+                    return f"{pulls[0].number}|{pulls[0].html_url}"
             raise
 
     return [commit_and_push, open_pull_request]
@@ -126,8 +126,8 @@ def _bedrock_tool_spec(lc_tool) -> dict:
     }
 
 
-def _open_or_get_pr(branch_name: str, description: str, task_id: str) -> int:
-    """Create a PR, or return the existing one's number if it already exists."""
+def _open_or_get_pr(branch_name: str, description: str, task_id: str) -> tuple[int, str]:
+    """Create a PR, or fetch the existing one. Returns (pr_number, pr_url)."""
     from github import GithubException
     try:
         pr = _get_repo().create_pull(
@@ -136,13 +136,12 @@ def _open_or_get_pr(branch_name: str, description: str, task_id: str) -> int:
             head=branch_name,
             base="master",
         )
-        return pr.number
+        return pr.number, pr.html_url
     except GithubException as e:
         if e.status == 422 and "already exists" in str(e.data):
-            # PR already open for this branch — fetch it
             pulls = list(_get_repo().get_pulls(state="open", head=f"Mad-bot:{branch_name}"))
             if pulls:
-                return pulls[0].number
+                return pulls[0].number, pulls[0].html_url
         raise
 
 
@@ -190,6 +189,7 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
     ]
 
     pr_number: int | None = None
+    pr_url: str | None = None
 
     for _ in range(10):
         response = client.converse(
@@ -213,7 +213,8 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
             try:
                 result = tool_fn.invoke(tool_use["input"])
                 if tool_use["name"] == "open_pull_request":
-                    pr_number = int(result)
+                    number, url = str(result).split("|", 1)
+                    pr_number, pr_url = int(number), url
                 tool_results.append({
                     "toolResult": {
                         "toolUseId": tool_use["toolUseId"],
@@ -232,6 +233,6 @@ def _run_loop(task_id: str, description: str, branch_name: str, worktree_path: P
 
     # Guarantee PR is opened even if the LLM skipped that step
     if pr_number is None:
-        pr_number = _open_or_get_pr(branch_name, description, task_id)
+        pr_number, pr_url = _open_or_get_pr(branch_name, description, task_id)
 
-    return {"branch": branch_name, "pr_number": pr_number}
+    return {"branch": branch_name, "pr_number": pr_number, "pr_url": pr_url}
