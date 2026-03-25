@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe Kanban</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 { font-size: 18px; font-weight: 600; }
+    header span { color: #8b949e; font-size: 13px; }
+
+    .new-task {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .new-task textarea {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #e6edf3;
+      font-size: 13px;
+      padding: 6px 10px;
+      resize: none;
+      width: 320px;
+      height: 36px;
+      line-height: 1.4;
+    }
+
+    .new-task textarea:focus { outline: none; border-color: #58a6ff; }
+
+    button.primary {
+      background: #238636;
+      border: 1px solid #2ea043;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px;
+      white-space: nowrap;
+    }
+
+    button.primary:hover { background: #2ea043; }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .board {
+      display: flex;
+      gap: 12px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      align-items: flex-start;
+    }
+
+    .column {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      min-width: 220px;
+      width: 220px;
+      flex-shrink: 0;
+    }
+
+    .column-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b949e;
+    }
+
+    .column-header .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .column-header .count {
+      margin-left: auto;
+      background: #21262d;
+      border-radius: 10px;
+      font-size: 11px;
+      padding: 1px 7px;
+      color: #8b949e;
+    }
+
+    .cards { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 60px; }
+
+    .card {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 13px;
+      cursor: default;
+      transition: border-color 0.15s;
+    }
+
+    .card:hover { border-color: #58a6ff; }
+
+    .card .task-id {
+      font-size: 11px;
+      color: #8b949e;
+      margin-bottom: 4px;
+      font-family: monospace;
+    }
+
+    .card .desc {
+      color: #e6edf3;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .card .meta { display: flex; flex-direction: column; gap: 4px; }
+
+    .card .branch {
+      font-family: monospace;
+      font-size: 11px;
+      color: #8b949e;
+      background: #161b22;
+      padding: 2px 6px;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card a.pr-link {
+      font-size: 11px;
+      color: #58a6ff;
+      text-decoration: none;
+    }
+
+    .card a.pr-link:hover { text-decoration: underline; }
+
+    .card .error {
+      font-size: 11px;
+      color: #f85149;
+      word-break: break-word;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border: 2px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: #238636;
+      border: 1px solid #2ea043;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      padding: 10px 16px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Vibe Kanban</h1>
+  <span>LawnMowerApplication</span>
+  <div class="new-task">
+    <textarea id="descInput" placeholder="Describe the task for the AI agent…" rows="1"></textarea>
+    <button class="primary" id="submitBtn" onclick="submitTask()">Run Agent</button>
+  </div>
+</header>
+
+<div class="board" id="board"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const COLUMNS = [
+    { key: "queued",    label: "Queued",    color: "#6e7681" },
+    { key: "running",   label: "Running",   color: "#58a6ff" },
+    { key: "error",     label: "Error",     color: "#f85149" },
+    { key: "open",      label: "PR Open",   color: "#3fb950" },
+    { key: "commented", label: "Commented", color: "#d29922" },
+    { key: "approved",  label: "Approved",  color: "#a371f7" },
+    { key: "merged",    label: "Merged",    color: "#8957e5" },
+    { key: "closed",    label: "Closed",    color: "#6e7681" },
+  ];
+
+  function taskColumn(task) {
+    if (task.status === "error") return "error";
+    if (task.status === "queued") return "queued";
+    if (task.status === "running") return "running";
+    if (task.pr_status) return task.pr_status;
+    return "open";
+  }
+
+  function cardHtml(task) {
+    const isRunning = task.status === "running";
+    const spinner = isRunning ? '<span class="spinner"></span>' : '';
+    let meta = '';
+    if (task.branch) {
+      meta += `<div class="branch" title="${task.branch}">${task.branch}</div>`;
+    }
+    if (task.pr_url && task.pr_number) {
+      meta += `<a class="pr-link" href="${task.pr_url}" target="_blank">PR #${task.pr_number} →</a>`;
+    }
+    if (task.error) {
+      meta += `<div class="error">${task.error}</div>`;
+    }
+    return `
+      <div class="card">
+        <div class="task-id">${spinner}#${task.id}</div>
+        <div class="desc">${task.description}</div>
+        <div class="meta">${meta}</div>
+      </div>`;
+  }
+
+  function render(tasks) {
+    const board = document.getElementById('board');
+    const grouped = {};
+    COLUMNS.forEach(c => { grouped[c.key] = []; });
+    tasks.forEach(t => {
+      const col = taskColumn(t);
+      if (grouped[col]) grouped[col].push(t);
+    });
+
+    board.innerHTML = COLUMNS.map(col => {
+      const items = grouped[col.key] || [];
+      return `
+        <div class="column">
+          <div class="column-header">
+            <span class="dot" style="background:${col.color}"></span>
+            ${col.label}
+            <span class="count">${items.length}</span>
+          </div>
+          <div class="cards">
+            ${items.map(cardHtml).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function fetchTasks() {
+    const res = await fetch('/tasks');
+    if (!res.ok) return;
+    render(await res.json());
+  }
+
+  async function submitTask() {
+    const input = document.getElementById('descInput');
+    const btn = document.getElementById('submitBtn');
+    const desc = input.value.trim();
+    if (!desc) return;
+
+    btn.disabled = true;
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: desc }),
+    });
+    btn.disabled = false;
+
+    if (res.ok) {
+      input.value = '';
+      showToast('Task queued!');
+      fetchTasks();
+    } else {
+      showToast('Error creating task', true);
+    }
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#da3633' : '#238636';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Allow Enter (without Shift) to submit
+  document.getElementById('descInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitTask(); }
+  });
+
+  fetchTasks();
+  setInterval(fetchTasks, 10000); // refresh every 10s
+</script>
+</body>
+</html>
