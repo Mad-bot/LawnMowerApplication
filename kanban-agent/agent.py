@@ -29,19 +29,24 @@ _repo = None
 
 def _github_token() -> str:
     token = os.environ.get("GITHUB_TOKEN", "")
-    if not token or token == "your_github_token_here":
-        token = subprocess.run(
-            ["gh", "auth", "token"], capture_output=True, text=True
-        ).stdout.strip()
-    if not token:
-        raise RuntimeError("No GitHub token found. Set GITHUB_TOKEN or run `gh auth login`.")
+    if not token or token.startswith("your_"):
+        # Try gh CLI — search common install locations
+        for gh_bin in ["gh", "/usr/local/bin/gh", "/opt/homebrew/bin/gh"]:
+            result = subprocess.run(
+                [gh_bin, "auth", "token"], capture_output=True, text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                token = result.stdout.strip()
+                break
+    if not token or token.startswith("your_"):
+        raise RuntimeError("No GitHub token found. Set GITHUB_TOKEN in .env or run `gh auth login`.")
     return token
 
 
 def _get_repo():
     global _repo
-    if _repo is None:
-        _repo = Github(_github_token()).get_repo(GITHUB_REPO)
+    # Always create a fresh client so token rotation / retries work correctly
+    _repo = Github(_github_token()).get_repo(GITHUB_REPO)
     return _repo
 
 
