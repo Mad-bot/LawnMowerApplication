@@ -1,4 +1,4 @@
-"""FastAPI backend for the MultiTask agent."""
+"""FastAPI backend for the Mad-bot - MultiTask Agent agent."""
 
 import threading
 import uuid
@@ -16,7 +16,7 @@ from github_poller import start_poller
 
 load_dotenv()
 
-app = FastAPI(title="MultiTask")
+app = FastAPI(title="Mad-bot - MultiTask Agent")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

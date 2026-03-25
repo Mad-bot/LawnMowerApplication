@@ -1,4 +1,4 @@
-# MultiTask — AI Agent Dashboard
+# Mad-bot - MultiTask Agent — AI Agent Dashboard
 
 A LangChain-powered task runner + kanban dashboard for the LawnMowerApplication repo.
 
