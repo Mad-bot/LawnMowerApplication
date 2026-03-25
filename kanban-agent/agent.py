@@ -15,7 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from github import Github
-from langchain_anthropic import ChatAnthropic
+from langchain_aws import ChatBedrockConverse
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 
@@ -103,7 +103,12 @@ After all tool calls are complete, output a JSON object on its own line like:
 
 def run_agent(task_id: str, description: str) -> dict:
     """Run the full agent flow for a task. Returns the final output string."""
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0).bind_tools(TOOLS)
+    model_id = os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL", os.environ.get("ANTHROPIC_MODEL"))
+    llm = ChatBedrockConverse(
+        model=model_id,
+        region_name=os.environ.get("AWS_REGION", "eu-west-1"),
+        temperature=0,
+    ).bind_tools(TOOLS)
 
     messages = [
         HumanMessage(
