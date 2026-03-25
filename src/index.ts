@@ -123,6 +123,18 @@ export function parseMove(value: string): Move {
         case 'F' :
             move = Move.FORWARD;
             break;
+        case 'Q' :
+            move = Move.FORWARD_NW;
+            break;
+        case 'Z' :
+            move = Move.FORWARD_SW;
+            break;
+        case 'E' :
+            move = Move.FORWARD_NE;
+            break;
+        case 'C' :
+            move = Move.FORWARD_SE;
+            break;
         default :
             throw new Error('Something bad happened with move : ' + value);
     }
