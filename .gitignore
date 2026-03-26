@@ -1,1 +1,6 @@
 node_modules
+.venv/
+tasks.json
+__pycache__/
+*.pyc
+kanban-agent/.env
