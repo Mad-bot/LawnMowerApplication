@@ -2,6 +2,8 @@ import { IMowerMove } from '../interfaces/IMowerMove';
 import { MowerContext } from '../models/MowerContext';
 
 export class JumpTwoCasesMove implements IMowerMove {
+  private readonly JUMP_SIZE = 2;
+
   execute(context: MowerContext): void {
     const { mower, lawn } = context;
     const orientation = mower.getOrientation();
@@ -11,16 +13,18 @@ export class JumpTwoCasesMove implements IMowerMove {
 
     switch (orientation) {
       case 'N':
-        y += 2;
+        y += this.JUMP_SIZE;
         break;
       case 'S':
-        y -= 2;
+        y -= this.JUMP_SIZE;
         break;
       case 'E':
-        x += 2;
+        x += this.JUMP_SIZE;
         break;
       case 'W':
-        x -= 2;
+        x -= this.JUMP_SIZE;
+        break;
+      default:
         break;
     }
 
